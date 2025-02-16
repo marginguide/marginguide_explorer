@@ -7,7 +7,7 @@ import tkinter as tk
 from threading import Timer
 def show_custom_notification_(data_1 = '', data_2 = ''):
     basedir = os.path.abspath(os.path.dirname(__file__))
-    sound_path = f"{basedir}/static/assets/sound/alram.wav" 
+    sound_path = f"{basedir}/static/ranking.wav" 
     # 알림 소리 재생
     if os.path.exists(sound_path):
         winsound.PlaySound(sound_path, winsound.SND_ASYNC)
@@ -111,11 +111,14 @@ def insert_endtime(till):
     return True
 
 def delete_endtime():
-    query = f"""DELETE use_selenium WHERE process = 'search_rank'
-                """
-    cursor.execute(query)
-    conn.commit()
-    return True
+    try:
+        query = f"""UPDATE use_selenium SET last_time = '' WHERE process = 'search_rank'
+                    """
+        cursor.execute(query)
+        conn.commit()
+        return True
+    except:
+        return True
 
 def is_headless():
     try:
