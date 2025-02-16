@@ -1,24 +1,13 @@
 # pyinstaller -w -F --uac-admin --add-data "static;static" --noconfirm marginguide_explorer.py
-
 from seleniumbase import SB
 import time, os, random,sqlite3,winsound
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import tkinter as tk
 from threading import Timer
-def is_headless():
-    query =  "SELECT set_value FROM setting WHERE setting_name = 'headless'"
-    cursor.execute(query)
-    result = cursor.fetchone()
-    if result[0] == "on":
-        data = True
-    else:
-        data = False
-    return data
-
 def show_custom_notification_(data_1 = '', data_2 = ''):
     basedir = os.path.abspath(os.path.dirname(__file__))
-    sound_path = f"{basedir}/static/ranking.wav" 
+    sound_path = f"{basedir}/static/assets/sound/alram.wav" 
     # 알림 소리 재생
     if os.path.exists(sound_path):
         winsound.PlaySound(sound_path, winsound.SND_ASYNC)
@@ -91,9 +80,7 @@ def show_custom_notification_(data_1 = '', data_2 = ''):
         # 일정 시간이 지나면 창 닫기
         def timeout():
             os._exit(0)
-
-
-        Timer(100, timeout).start()  # 10시간 후 자동 종료간 후 자동 종료
+        Timer(10, timeout).start()  # 10시간 후 자동 종료간 후 자동 종료
 
         root.mainloop()
     except:
@@ -123,6 +110,27 @@ def insert_endtime(till):
     conn.commit()
     return True
 
+def delete_endtime():
+    query = f"""DELETE use_selenium WHERE process = 'search_rank'
+                """
+    cursor.execute(query)
+    conn.commit()
+    return True
+
+def is_headless():
+    try:
+        query =  "SELECT set_value FROM setting WHERE setting_name = 'headless'"
+        cursor.execute(query)
+        result = cursor.fetchone()
+        if result[0] == "on":
+            data = True
+        else:
+            data = False
+    except:
+        data = True
+    return data
+
+
 def rankings():
     try:
         coupang_url =f'https://www.coupang.com' 
@@ -139,12 +147,12 @@ def rankings():
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
             insert_endtime(op_time)
-            headless = is_headless()
-            with SB(headless2= headless, block_images=True,undetectable=True,incognito=True) as self:
+            with SB(headless2=headless, uc=False, log_cdp=True, remote_debug=True, block_images=True,undetectable=True,incognito=True) as self:
                 self.open('http://google.com')
                 success_list = []
                 for keyword in keywords:
-
+                    # 중간에 중지되었을 경우
+                    optcode_list = []
                     rankings = []
                     rank = 0
                     page = 1
@@ -185,6 +193,11 @@ def rankings():
                                 rank += 1
                             try:optcode = item['data-vendor-item-id']
                             except:continue
+                            
+                            if optcode in optcode_list:
+                                continue
+                            else:
+                                optcode_list.append(optcode)
                             prdcode = my_opt.get(optcode, '')
                             if rank  > 20 and prdcode == '':
                                 continue
@@ -248,9 +261,10 @@ def rankings():
             if len(success_list) > 0:
                 print(datetime.today())
                 show_custom_notification_(data_1 = f"{len(success_list) } 개의 검색어 랭킹 수집 완료", data_2 = "마진가이드에서 확인하세요.")
-        print(datetime.today())
+        # till 타임 지우기
+        delete_endtime()
         return True  
-    except :
+    except:
         print(datetime.today())
         show_custom_notification_(data_1 = f"키워드 랭킹검색이 중단되었습니다.", data_2 = "다시 시도해 주세요.")
         return False
@@ -280,6 +294,7 @@ if __name__ == "__main__":
             cur = con.cursor()
     except Exception as e:
         pass
+    headless = is_headless()
     if rankings():
         rankings()
     
