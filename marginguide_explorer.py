@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import tkinter as tk
 from threading import Timer
+
 def get_sound_path(filename):
     """PyInstaller 실행 환경에서도 올바른 경로를 반환하는 함수"""
     if getattr(sys, 'frozen', False):  # .exe 실행 여부 확인
@@ -140,7 +141,14 @@ def is_headless():
         data = True
     return data
 
-
+def input_log(content):
+    err_time = datetime.now()
+    err_time = datetime.strftime(err_time, "%Y-%m-%d %H:%M:%S")
+    query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
+    cursor.execute(query)
+    conn.commit()
+    
+    
 def rankings():
     try:
         coupang_url =f'https://www.coupang.com' 
@@ -154,14 +162,15 @@ def rankings():
 
         if len(keywords) > 0:
             # 시간계산
+
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
             insert_endtime(op_time)
-            with SB(headless2=headless, uc=True, log_cdp=False, block_images=True,undetectable=True,incognito=True) as self:
+            with SB(headless2=headless, uc=True, log_cdp=True, block_images=True,undetectable=True,incognito=False) as self:
                 self.open('http://google.com')
                 success_cnt = 0
                 for keyword in keywords:
-                    # 중간에 중지되었을 경우
+                    
                     optcode_list = []
                     rankings = []
                     rank = 0
@@ -169,42 +178,53 @@ def rankings():
                     url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
                     self.open(url)
                     if self.is_text_visible("ERR_HTTP2_PROTOCOL_ERROR"):
+                        input_log('ERR_HTTP2_PROTOCOL_ERROR')
                         show_custom_notification_(data_1 = 'ERR_HTTP2_PROTOCOL_ERROR', data_2=  '관리자에게 문의해주세요.')
                         os._exit()
                         return False
-                    if self.is_text_visible("Access Denied"):
+                    
+                    if self.is_text_visible("Access_Denied"):
+                        input_log('Access_Denied')
                         show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
                         os._exit()
                         return False
+                    
                     try:last_page = int(self.get_text("//a[contains(@class, 'btn-last')]", timeout=4))
                     except:last_page = len(self.find_elements("//span[@class='btn-page']/a"))
                     while True:
-                        if page > last_page:
-                            break
-                        
-                        if page > 1:
-                            url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
-                            self.open(url)
-                            if self.is_text_visible("Access Denied"):
-                                show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
-                                os._exit()
-                                return False
 
+                        if self.is_text_visible("Access Denied"):
+                            input_log('Access_Denied')
+                            show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
+                            os._exit()
+                            return False
                         time.sleep(random.randint(3000, 5000) / 1000)
                         scroll = random.randint(10, 1000) * 10
                         self.execute_script(f"window.scrollTo(0, {scroll})")
                         time.sleep(random.randint(1000, 3000) / 1000)
                         soup = BeautifulSoup(self.get_page_source(), "html.parser")
-                        items = soup.find_all('li', class_='search-product') 
+                        items = soup.select("""
+                                            li.search-product:not(.sdw-aging-carousel-item):not(.ad-badge-text):not(.search-product__ad-badge)
+                                            """)
                         disp_cnt = 0
                         for index, item in enumerate(items, start=1): #저장한 items들을 순차적으로 검색함.  
                             disp_cnt += 1
                             mine = 0
-                            try:
+                            # 광고면 지나가
+                            try: 
                                 ads = item.find('span', class_='ad-badge-text').get_text(strip=True) 
                                 continue
                             except:
-                                rank += 1
+                                pass
+                            
+                            # 시간 특가 등 광고이면 지나가
+                            try: 
+                                ads = item.find('span', class_='sdw-aging-carousel-item').get_text(strip=True) 
+                                continue
+                            except:
+                                pass
+
+                            rank += 1
                             try:optcode = item['data-vendor-item-id']
                             except:continue
                             
@@ -213,6 +233,7 @@ def rankings():
                             else:
                                 optcode_list.append(optcode)
                             prdcode = my_opt.get(optcode, '')
+
                             if rank  > 20 and prdcode == '':
                                 continue
 
@@ -262,7 +283,15 @@ def rankings():
                                     str_today,  keyword, disp_page, deltype, rank, prdcode, optcode, dispcode,  dispname,  price, thumb, link, rating, rating_cnt, mine
                                 ))
                         page += 1
-
+                        if page > last_page:
+                            break
+                        try:
+                            xpath = "//a[@class='btn-next']"
+                            self.click(xpath)
+                        except:
+                            url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
+                            self.open(url)
+                            
 
                     
 
@@ -277,13 +306,12 @@ def rankings():
 
                     
             if success_cnt > 0:
-                print(datetime.today())
                 show_custom_notification_(data_1 = f"{success_cnt} 개의 검색어 랭킹 수집 완료", data_2 = "마진가이드에서 확인하세요.")
         # till 타임 지우기
         delete_endtime()
         return True  
     except:
-        print(datetime.today())
+        delete_endtime()
         show_custom_notification_(data_1 = f"키워드 랭킹검색이 중단되었습니다.", data_2 = "다시 시도해 주세요.")
         return False
 
