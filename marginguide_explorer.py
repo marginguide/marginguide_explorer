@@ -1,6 +1,6 @@
-# pyinstaller -w -F --uac-admin --add-data "static;static" --noconfirm marginguide_explorer.py
+# pyinstaller -w -F --uac-admin --add-data "static;static" --icon=.\static\icon.ico --noconfirm marginguide_explorer.py
 from seleniumbase import SB
-import time, os, random,sqlite3,winsound
+import time, os, random,sqlite3,winsound, sys, psutil
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import tkinter as tk
@@ -150,9 +150,9 @@ def rankings():
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
             insert_endtime(op_time)
-            with SB(headless2=headless, uc=False, log_cdp=True, remote_debug=True, block_images=True,undetectable=True,incognito=True) as self:
+            with SB(headless2=headless, uc=True, log_cdp=False, block_images=True,undetectable=True,incognito=True) as self:
                 self.open('http://google.com')
-                success_list = []
+                success_cnt = 0
                 for keyword in keywords:
                     # 중간에 중지되었을 경우
                     optcode_list = []
@@ -161,6 +161,10 @@ def rankings():
                     page = 1
                     url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
                     self.open(url)
+                    if self.is_text_visible("ERR_HTTP2_PROTOCOL_ERROR"):
+                        show_custom_notification_(data_1 = 'ERR_HTTP2_PROTOCOL_ERROR', data_2=  '관리자에게 문의해주세요.')
+                        os._exit()
+                        return False
                     if self.is_text_visible("Access Denied"):
                         show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
                         os._exit()
@@ -169,7 +173,6 @@ def rankings():
                     except:last_page = len(self.find_elements("//span[@class='btn-page']/a"))
                     while True:
                         if page > last_page:
-                            update_date(keyword)
                             break
                         
                         if page > 1:
@@ -186,8 +189,9 @@ def rankings():
                         time.sleep(random.randint(1000, 3000) / 1000)
                         soup = BeautifulSoup(self.get_page_source(), "html.parser")
                         items = soup.find_all('li', class_='search-product') 
-                        
+                        disp_cnt = 0
                         for index, item in enumerate(items, start=1): #저장한 items들을 순차적으로 검색함.  
+                            disp_cnt += 1
                             mine = 0
                             try:
                                 ads = item.find('span', class_='ad-badge-text').get_text(strip=True) 
@@ -202,8 +206,11 @@ def rankings():
                             else:
                                 optcode_list.append(optcode)
                             prdcode = my_opt.get(optcode, '')
+                            if prdcode == '15306828390':
+                                pass
                             if rank  > 20 and prdcode == '':
                                 continue
+
                             if optcode in my_opt:
                                 mine = 1
                             try:dispcode = item['data-product-id']
@@ -243,8 +250,11 @@ def rankings():
                                     deltype = "로켓배송"
                             except:
                                 deltype = "판매자배송"
+                            disp_page = int(page) * 2
+                            if disp_cnt <= 36:
+                                disp_page = disp_page- 1
                             rankings.append((
-                                    str_today,  keyword, page, deltype, rank, prdcode, optcode, dispcode,  dispname,  price, thumb, link, rating, rating_cnt, mine
+                                    str_today,  keyword, disp_page, deltype, rank, prdcode, optcode, dispcode,  dispname,  price, thumb, link, rating, rating_cnt, mine
                                 ))
                         page += 1
 
@@ -257,13 +267,13 @@ def rankings():
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
                     cur.executemany(query,rankings )
                     con.commit()
-                    success_list.append(keyword)
-                    if  len(keywords) > len(success_list):
-                        time.sleep(30)
+                    update_date(keyword)
+                    success_cnt += 1
+
                     
-            if len(success_list) > 0:
+            if success_cnt > 0:
                 print(datetime.today())
-                show_custom_notification_(data_1 = f"{len(success_list) } 개의 검색어 랭킹 수집 완료", data_2 = "마진가이드에서 확인하세요.")
+                show_custom_notification_(data_1 = f"{success_cnt} 개의 검색어 랭킹 수집 완료", data_2 = "마진가이드에서 확인하세요.")
         # till 타임 지우기
         delete_endtime()
         return True  
@@ -274,7 +284,18 @@ def rankings():
 
 
 if __name__ == "__main__":
-    
+    current_pid = os.getpid()  # 현재 실행 중인 프로세스의 PID 가져오기
+    exe_name = os.path.basename(sys.argv[0])  # 실행 파일 이름 가져오기
+
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            if proc.info['name'] == exe_name and proc.info['pid'] != current_pid:
+                print(f"기존 실행 중인 프로세스 종료: {proc.info['pid']}")
+                show_custom_notification_(data_1="동일 프로그램이 시행중입니다.", data_2="이전 프로세스가 종료된 후 다시 시도해주세요.")
+                sys.exit(0)
+                time.sleep(1)  # 프로세스 종료를 기다리기
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
     now = datetime.today()
     str_today = str(datetime.strftime(now, "%Y-%m-%d"))
     basedir = os.path.abspath(os.path.dirname(__file__))
