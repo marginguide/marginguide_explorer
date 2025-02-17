@@ -289,18 +289,7 @@ def rankings():
 
 
 if __name__ == "__main__":
-    current_pid = os.getpid()  # 현재 실행 중인 프로세스의 PID 가져오기
-    exe_name = os.path.basename(sys.argv[0])  # 실행 파일 이름 가져오기
 
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            if proc.info['name'] == exe_name and proc.info['pid'] != current_pid:
-                print(f"기존 실행 중인 프로세스 종료: {proc.info['pid']}")
-                show_custom_notification_(data_1="동일 프로그램이 시행중입니다.", data_2="이전 프로세스가 종료된 후 다시 시도해주세요.")
-                sys.exit(0)
-                time.sleep(1)  # 프로세스 종료를 기다리기
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
     now = datetime.today()
     str_today = str(datetime.strftime(now, "%Y-%m-%d"))
     basedir = os.path.abspath(os.path.dirname(__file__))
