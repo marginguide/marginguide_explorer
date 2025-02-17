@@ -213,8 +213,6 @@ def rankings():
                             else:
                                 optcode_list.append(optcode)
                             prdcode = my_opt.get(optcode, '')
-                            if prdcode == '15306828390':
-                                pass
                             if rank  > 20 and prdcode == '':
                                 continue
 
@@ -325,7 +323,6 @@ if __name__ == "__main__":
             cur = con.cursor()
     except Exception as e:
         pass
-    show_custom_notification_(data_1 = '', data_2 = '')
     headless = is_headless()
     if rankings():
         rankings()
