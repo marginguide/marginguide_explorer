@@ -5,9 +5,16 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import tkinter as tk
 from threading import Timer
+def get_sound_path(filename):
+    """PyInstaller 실행 환경에서도 올바른 경로를 반환하는 함수"""
+    if getattr(sys, 'frozen', False):  # .exe 실행 여부 확인
+        base_path = os.path.join(sys._MEIPASS, "static")  # static 폴더 포함
+    else:
+        base_path = os.path.abspath("static")  # 개발 환경에서는 일반적인 폴더 사용
+    return os.path.join(base_path, filename)
+
 def show_custom_notification_(data_1 = '', data_2 = ''):
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    sound_path = f"{basedir}/static/ranking.wav" 
+    sound_path = get_sound_path("ranking.wav")
     # 알림 소리 재생
     if os.path.exists(sound_path):
         winsound.PlaySound(sound_path, winsound.SND_ASYNC)
@@ -318,6 +325,7 @@ if __name__ == "__main__":
             cur = con.cursor()
     except Exception as e:
         pass
+    show_custom_notification_(data_1 = '', data_2 = '')
     headless = is_headless()
     if rankings():
         rankings()
