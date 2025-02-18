@@ -235,7 +235,7 @@ def rankings():
                                 optcode_list.append(optcode)
                             prdcode = my_opt.get(optcode, '')
 
-                            if rank  > 20 and prdcode == '':
+                            if rank  > 70 and prdcode == '':
                                 continue
 
                             if optcode in my_opt:
