@@ -94,7 +94,13 @@ def show_custom_notification_(data_1 = '', data_2 = ''):
     except:
         pass
 
-
+def input_log(content):
+    err_time = datetime.now()
+    err_time = datetime.strftime(err_time, "%Y-%m-%d %H:%M:%S")
+    query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
+    cursor.execute(query)
+    conn.commit()
+    
 def keyword_to_rank():
     # 키워드 목록 가져오기
     query = f"SELECT keyword FROM search_keyword WHERE last_check != '{str_today}' OR last_check IS NULL"
@@ -106,6 +112,7 @@ def update_date(keyword):
     query = f"UPDATE search_keyword SET last_check = '{str_today}' WHERE keyword = '{keyword}'"
     cursor.execute(query)
     conn.commit()
+    input_log('update_date2')
     return True
 
 def insert_endtime(till):
@@ -124,6 +131,7 @@ def delete_endtime():
                     """
         cursor.execute(query)
         conn.commit()
+        input_log('delete_endtime2')
         return True
     except:
         return True
@@ -141,12 +149,7 @@ def is_headless():
         data = True
     return data
 
-def input_log(content):
-    err_time = datetime.now()
-    err_time = datetime.strftime(err_time, "%Y-%m-%d %H:%M:%S")
-    query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
-    cursor.execute(query)
-    conn.commit()
+
     
     
 def rankings():
@@ -157,7 +160,6 @@ def rankings():
         query = "SELECT optcode, prdcode FROM optlist"
         cursor.execute(query)
         my_opt = {str(row[0]): row[1] for row in cursor.fetchall()}
-
         keywords = keyword_to_rank()
 
         if len(keywords) > 0:
@@ -188,7 +190,6 @@ def rankings():
                         show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
                         os._exit()
                         return False
-                    
                     try:last_page = int(self.get_text("//a[contains(@class, 'btn-last')]", timeout=4))
                     except:last_page = len(self.find_elements("//span[@class='btn-page']/a"))
                     while True:
@@ -317,14 +318,14 @@ def rankings():
 
 
 if __name__ == "__main__":
-
+    
     now = datetime.today()
     str_today = str(datetime.strftime(now, "%Y-%m-%d"))
-    basedir = os.path.abspath(os.path.dirname(__file__))
-
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    db_path = os.path.join(basedir, "data", "db.db")
-    sel_path = os.path.join(basedir, "data", "seldb.db")
+    # basedir = os.path.abspath(os.path.dirname(__file__))
+    # sel_path = os.path.join(basedir, "data", "seldb.db")
+    # db_path = os.path.join(basedir, "data", "db.db")
+    db_path = r"C:\Program Files (x86)\Margin Guide\data\db.db"
+    sel_path = r"C:\Program Files (x86)\Margin Guide\data\seldb.db"
     try:
         try:
             # 마진가이드용 DB
@@ -340,6 +341,7 @@ if __name__ == "__main__":
             cur = con.cursor()
     except Exception as e:
         pass
+
     headless = is_headless()
     if rankings():
         rankings()
