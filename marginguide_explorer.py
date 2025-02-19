@@ -1,11 +1,36 @@
 # pyinstaller -w -F --uac-admin --add-data "static;static" --icon=.\static\icon.ico --noconfirm marginguide_explorer.py
 from seleniumbase import SB
-import time, os, random,sqlite3,winsound, sys, psutil
+import time, os, random,sqlite3,winsound, sys
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 import tkinter as tk
 from threading import Timer
+import pandas as pd
+now = datetime.today()
+str_today = str(datetime.strftime(now, "%Y-%m-%d"))
+basedir = os.path.abspath(os.path.dirname(__file__))
+sel_path = os.path.join(basedir, "data", "seldb.db")
+db_path = os.path.join(basedir, "data", "db.db")
+# db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
+# sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
+try:
+    try:
+        # 마진가이드용 DB
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        # 셀레니움용 DB
+        con = sqlite3.connect(sel_path)
+        cur = con.cursor()
+    except:
+        conn = sqlite3.connect('data/db.db')
+        cursor = conn.cursor()
+        con = sqlite3.connect('data/seldb.db')
+        cur = con.cursor()
+except Exception as e:
+    pass
 
+
+    
 def get_sound_path(filename):
     """PyInstaller 실행 환경에서도 올바른 경로를 반환하는 함수"""
     if getattr(sys, 'frozen', False):  # .exe 실행 여부 확인
@@ -100,19 +125,18 @@ def input_log(content):
     query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
     cursor.execute(query)
     conn.commit()
-    
+
 def keyword_to_rank():
     # 키워드 목록 가져오기
     query = f"SELECT keyword FROM search_keyword WHERE last_check != '{str_today}' OR last_check IS NULL"
-    cursor.execute(query)
-    keywords = [row[0] for row in cursor.fetchall()]
+    df = pd.read_sql_query(query, conn)
+    keywords = df['keyword'].tolist()
     return keywords
 
 def update_date(keyword):
     query = f"UPDATE search_keyword SET last_check = '{str_today}' WHERE keyword = '{keyword}'"
     cursor.execute(query)
     conn.commit()
-    input_log('update_date2')
     return True
 
 def insert_endtime(till):
@@ -131,7 +155,6 @@ def delete_endtime():
                     """
         cursor.execute(query)
         conn.commit()
-        input_log('delete_endtime2')
         return True
     except:
         return True
@@ -139,9 +162,9 @@ def delete_endtime():
 def is_headless():
     try:
         query =  "SELECT set_value FROM setting WHERE setting_name = 'headless'"
-        cursor.execute(query)
-        result = cursor.fetchone()
-        if result[0] == "on":
+        df = pd.read_sql_query(query, conn)
+        result = df['set_value'][0]
+        if result == "on":
             data = True
         else:
             data = False
@@ -158,16 +181,23 @@ def rankings():
         result = []
         # 내 상품의 optcode list
         query = "SELECT optcode, prdcode FROM optlist"
-        cursor.execute(query)
-        my_opt = {str(row[0]): row[1] for row in cursor.fetchall()}
+        df = pd.read_sql_query(query, conn)
+        my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
+        input_log('p-1')
         keywords = keyword_to_rank()
+        input_log('p-2')
 
         if len(keywords) > 0:
             # 시간계산
-
+            input_log('p-3')
             op_time = now + timedelta(seconds=230 * len(keywords))
+            input_log('p-4')
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
+            input_log('p-5')
             insert_endtime(op_time)
+            input_log('p-6')
+            headless = is_headless()
+            input_log('p-7')
             with SB(headless2=headless, uc=True, log_cdp=True, block_images=True,undetectable=True,incognito=False) as self:
                 self.open('http://google.com')
                 success_cnt = 0
@@ -228,7 +258,7 @@ def rankings():
                             rank += 1
                             try:optcode = item['data-vendor-item-id']
                             except:continue
-                            
+
                             if optcode in optcode_list:
                                 continue
                             else:
@@ -318,31 +348,6 @@ def rankings():
 
 
 if __name__ == "__main__":
-    
-    now = datetime.today()
-    str_today = str(datetime.strftime(now, "%Y-%m-%d"))
-    # basedir = os.path.abspath(os.path.dirname(__file__))
-    # sel_path = os.path.join(basedir, "data", "seldb.db")
-    # db_path = os.path.join(basedir, "data", "db.db")
-    db_path = r"C:\Program Files (x86)\Margin Guide\data\db.db"
-    sel_path = r"C:\Program Files (x86)\Margin Guide\data\seldb.db"
-    try:
-        try:
-            # 마진가이드용 DB
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            # 셀레니움용 DB
-            con = sqlite3.connect(sel_path)
-            cur = con.cursor()
-        except:
-            conn = sqlite3.connect('data/db.db')
-            cursor = conn.cursor()
-            con = sqlite3.connect('data/seldb.db')
-            cur = con.cursor()
-    except Exception as e:
-        pass
-
-    headless = is_headless()
     if rankings():
         rankings()
     
