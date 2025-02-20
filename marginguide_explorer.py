@@ -11,8 +11,8 @@ str_today = str(datetime.strftime(now, "%Y-%m-%d"))
 basedir = os.path.abspath(os.path.dirname(__file__))
 sel_path = os.path.join(basedir, "data", "seldb.db")
 db_path = os.path.join(basedir, "data", "db.db")
-# db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
-# sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
+db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
+sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
 try:
     try:
         # 마진가이드용 DB
