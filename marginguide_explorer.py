@@ -189,26 +189,26 @@ def rankings():
 
         if len(keywords) > 0:
             # 시간계산
-            input_log('p-3')
             op_time = now + timedelta(seconds=230 * len(keywords))
-            input_log('p-4')
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
-            input_log('p-5')
             insert_endtime(op_time)
-            input_log('p-6')
+            input_log('p-4')
             headless = is_headless()
-            input_log('p-7')
+            input_log('p-5')
             with SB(headless2=headless, uc=True, log_cdp=True, block_images=True,undetectable=True,incognito=False) as self:
+                input_log('s-1')
                 self.open('http://google.com')
+                input_log('s-2')
                 success_cnt = 0
                 for keyword in keywords:
-                    
+                    input_log(f'k-1 ({keyword})')
                     optcode_list = []
                     rankings = []
                     rank = 0
                     page = 1
                     url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
                     self.open(url)
+                    input_log(f'k-2 ({keyword})')
                     if self.is_text_visible("ERR_HTTP2_PROTOCOL_ERROR"):
                         input_log('ERR_HTTP2_PROTOCOL_ERROR')
                         show_custom_notification_(data_1 = 'ERR_HTTP2_PROTOCOL_ERROR', data_2=  '관리자에게 문의해주세요.')
@@ -222,6 +222,7 @@ def rankings():
                         return False
                     try:last_page = int(self.get_text("//a[contains(@class, 'btn-last')]", timeout=4))
                     except:last_page = len(self.find_elements("//span[@class='btn-page']/a"))
+                    input_log(f'k-3 ({keyword})')
                     while True:
 
                         if self.is_text_visible("Access Denied"):
@@ -233,10 +234,11 @@ def rankings():
                         scroll = random.randint(10, 1000) * 10
                         self.execute_script(f"window.scrollTo(0, {scroll})")
                         time.sleep(random.randint(1000, 3000) / 1000)
+                        input_log(f'w-1 ({keyword})')
                         soup = BeautifulSoup(self.get_page_source(), "html.parser")
-                        items = soup.select("""
-                                            li.search-product:not(.sdw-aging-carousel-item):not(.ad-badge-text):not(.search-product__ad-badge)
-                                            """)
+                        input_log(f'w-2 ({keyword})')
+                        items = soup.select(" li.search-product:not(.sdw-aging-carousel-item):not(.ad-badge-text):not(.search-product__ad-badge) ")
+                        input_log(f'w-3 ({len(items)})')
                         disp_cnt = 0
                         for index, item in enumerate(items, start=1): #저장한 items들을 순차적으로 검색함.  
                             disp_cnt += 1
