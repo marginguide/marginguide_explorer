@@ -13,21 +13,19 @@ sel_path = os.path.join(basedir, "data", "seldb.db")
 db_path = os.path.join(basedir, "data", "db.db")
 db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
 sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
-try:
+def db_conn():
     try:
-        # 마진가이드용 DB
         conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        # 셀레니움용 DB
-        con = sqlite3.connect(sel_path)
-        cur = con.cursor()
     except:
         conn = sqlite3.connect('data/db.db')
-        cursor = conn.cursor()
+    return conn
+
+def db_con():
+    try:
+        con = sqlite3.connect(sel_path)
+    except:
         con = sqlite3.connect('data/seldb.db')
-        cur = con.cursor()
-except Exception as e:
-    pass
+    return con
 
 
     
@@ -120,26 +118,40 @@ def show_custom_notification_(data_1 = '', data_2 = ''):
         pass
 
 def input_log(content):
+    conn = db_conn()
+    cursor = conn.cursor()
     err_time = datetime.now()
     err_time = datetime.strftime(err_time, "%Y-%m-%d %H:%M:%S")
     query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
     cursor.execute(query)
     conn.commit()
+    cursor.close()
+    conn.close()
+    return True
+    
 
 def keyword_to_rank():
+    conn = db_conn()
     # 키워드 목록 가져오기
     query = f"SELECT keyword FROM search_keyword WHERE last_check != '{str_today}' OR last_check IS NULL"
     df = pd.read_sql_query(query, conn)
     keywords = df['keyword'].tolist()
+    conn.close()
     return keywords
 
 def update_date(keyword):
+    conn = db_conn()
+    cursor = conn.cursor()
     query = f"UPDATE search_keyword SET last_check = '{str_today}' WHERE keyword = '{keyword}'"
     cursor.execute(query)
     conn.commit()
+    cursor.close()
+    conn.close()
     return True
 
 def insert_endtime(till):
+    conn = db_conn()
+    cursor = conn.cursor()
     query = f"""INSERT INTO use_selenium (process, last_time) 
                 VALUES ( 'search_rank', '{till}') 
                 ON CONFLICT DO UPDATE SET 
@@ -147,42 +159,42 @@ def insert_endtime(till):
                 """
     cursor.execute(query)
     conn.commit()
+    cursor.close()
+    conn.close()
     return True
 
 def delete_endtime():
     try:
+        conn = db_conn()
+        cursor = conn.cursor()
         query = f"""UPDATE use_selenium SET last_time = '' WHERE process = 'search_rank'
                     """
         cursor.execute(query)
         conn.commit()
+        cursor.close()
+        conn.close()
         return True
     except:
         return True
 
-def is_headless():
-    try:
-        query =  "SELECT set_value FROM setting WHERE setting_name = 'headless'"
-        df = pd.read_sql_query(query, conn)
-        result = df['set_value'][0]
-        if result == "on":
-            data = True
-        else:
-            data = False
-    except:
-        data = True
-    return data
+def my_opt_list():
+    conn = db_conn()
+    cursor = conn.cursor()
+    query = "SELECT optcode, prdcode FROM optlist"
+    df = pd.read_sql_query(query, conn) 
+    my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
+    cursor.close()
+    conn.close()
+    return my_opt
 
-
-    
-    
 def rankings():
     try:
         coupang_url =f'https://www.coupang.com' 
         result = []
         # 내 상품의 optcode list
-        query = "SELECT optcode, prdcode FROM optlist"
-        df = pd.read_sql_query(query, conn)
-        my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
+        
+        
+        my_opt = my_opt_list()
         input_log('p-1')
         keywords = keyword_to_rank()
         input_log('p-2')
@@ -191,11 +203,10 @@ def rankings():
             # 시간계산
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
-            insert_endtime(op_time)
             input_log('p-4')
-            headless = is_headless()
+            insert_endtime(op_time)
             input_log('p-5')
-            with SB(headless2=headless, uc=True, log_cdp=True, block_images=True,undetectable=True,incognito=False) as self:
+            with SB(headless2=True, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
                 input_log('s-1')
                 self.open('http://google.com')
                 input_log('s-2')
@@ -327,13 +338,17 @@ def rankings():
                             
 
                     
-
+                    con = db_con()
+                    cur = con.cursor()
                     query = """
                                 INSERT OR IGNORE INTO rankings 
                                     ( date, keyword, page, deltype, rank, prdcode, optcode, dispcode,  dispname,  price, thumb, link, rating, rating_cnt, mine) 
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
                     cur.executemany(query,rankings )
                     con.commit()
+                    cur.close()
+                    con.close()
+                    
                     update_date(keyword)
                     success_cnt += 1
 
