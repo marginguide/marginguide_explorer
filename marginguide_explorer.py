@@ -13,12 +13,6 @@ sel_path = os.path.join(basedir, "data", "seldb.db")
 db_path = os.path.join(basedir, "data", "db.db")
 # db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
 # sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
-def db_conn():
-    try:
-        conn = sqlite3.connect(db_path)
-    except:
-        conn = sqlite3.connect('data/db.db')
-    return conn
 
 def db_con():
     try:
@@ -27,8 +21,82 @@ def db_con():
         con = sqlite3.connect('data/seldb.db')
     return con
 
+def db_conn():
+    try:
+        conn = sqlite3.connect(db_path)
+    except:
+        conn = sqlite3.connect('data/db.db')
+    return conn
+def iniitial():
+    con = db_con()
+    cur = con.cursor()
 
+    def createSELDB(table_name, query):
+        query = f"CREATE TABLE IF NOT EXISTS '{str(table_name)}' ( {query} )"
+        cur.execute(query)
+        con.commit()
+
+    # 현재 DB의 테이블 리스트
+    query = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+    df =pd.read_sql_query(query, con)
+    ranking_db_list = df['name'].tolist()
     
+    
+    if not 'rankings' in ranking_db_list:
+        table_name = 'rankings'
+        query = """
+            date TEXT NOT NULL, 
+            keyword TEXT NOT NULL,  
+            page INTEGER NOT NULL,
+            deltype TEXT NOT NULL,
+            rank INTEGER NOT NULL,
+            prdcode TEXT NOT NULL,
+            optcode TEXT NOT NULL,
+            dispcode TEXT NOT NULL,
+            dispname TEXT NOT NULL,
+            price INTEGER NOT NULL,
+            thumb TEXT NOT NULL,
+            link TEXT NOT NULL,
+            rating INTEGER NOT NULL,
+            rating_cnt INTEGER NOT NULL,
+            mine TEXT NOT NULL,
+            PRIMARY KEY(date, keyword, rank)
+        """
+        try : createSELDB(table_name, query)
+        except Exception: pass
+        
+    if not 'ranking_log' in ranking_db_list:
+        table_name = 'ranking_log'
+        query = """
+            date TEXT , 
+            process TEXT ,  
+            temp1 TEXT ,
+            temp2 TEXT ,
+            temp3 TEXT
+        """
+        try : createSELDB(table_name, query)
+        except Exception: pass
+        
+    # 검색어 순위용 검색어 테이블
+    if not "search_keyword" in ranking_db_list:
+        table_name = 'search_keyword'
+        query = """ date TEXT, keyword TEXT , last_check TEXT, latest_page INTEGER, last_page INTEGER,
+                PRIMARY KEY(keyword)
+                """
+        try : createSELDB(table_name, query)
+        except Exception: pass
+
+
+    # 검색어 순위용 검색어 테이블
+    if not "endtime" in ranking_db_list:
+        table_name = 'endtime'
+        query = """ title TEXT, endtime TEXT, PRIMARY KEY(title)
+                """
+        try : createSELDB(table_name, query)
+        except Exception: pass
+    cur.close()
+    con.close()
+        
 def get_sound_path(filename):
     """PyInstaller 실행 환경에서도 올바른 경로를 반환하는 함수"""
     if getattr(sys, 'frozen', False):  # .exe 실행 여부 확인
@@ -117,62 +185,61 @@ def show_custom_notification_(data_1 = '', data_2 = ''):
     except:
         pass
 
-def input_log(content):
-    conn = db_conn()
-    cursor = conn.cursor()
-    err_time = datetime.now()
-    err_time = datetime.strftime(err_time, "%Y-%m-%d %H:%M:%S")
-    query = f"INSERT INTO log (account , actionname, context, logdate) VALUES ('공용', '순위검색', '{content}', '{err_time}')"
-    cursor.execute(query)
-    conn.commit()
-    cursor.close()
-    conn.close()
+def input_ranking_log(content):
+    con = db_con()
+    cur = con.cursor()
+    now = datetime.now()
+    log_time = datetime.strftime(now, "%Y-%m-%d %H:%M:%S")
+    query = f"INSERT INTO ranking_log (date , process) VALUES (  '{log_time}', '{content}')"
+    cur.execute(query)
+    con.commit()
+    cur.close()
+    con.close()
     return True
     
 
 def keyword_to_rank():
-    conn = db_conn()
+    con = db_con()
     # 키워드 목록 가져오기
     query = f"SELECT keyword FROM search_keyword WHERE last_check != '{str_today}' OR last_check IS NULL"
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(query, con)
     keywords = df['keyword'].tolist()
-    conn.close()
+    con.close()
     return keywords
 
 def update_date(keyword):
-    conn = db_conn()
-    cursor = conn.cursor()
+    con = db_con()
+    cur = con.cursor()
     query = f"UPDATE search_keyword SET last_check = '{str_today}' WHERE keyword = '{keyword}'"
-    cursor.execute(query)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    cur.execute(query)
+    con.commit()
+    cur.close()
+    con.close()
     return True
 
 def insert_endtime(till):
-    conn = db_conn()
-    cursor = conn.cursor()
-    query = f"""INSERT INTO use_selenium (process, last_time) 
+    con = db_con()
+    cur = con.cursor()
+    query = f"""INSERT INTO endtime (title, endtime) 
                 VALUES ( 'search_rank', '{till}') 
                 ON CONFLICT DO UPDATE SET 
-                last_time = '{till}'
+                endtime = '{till}'
                 """
-    cursor.execute(query)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    cur.execute(query)
+    con.commit()
+    cur.close()
+    con.close()
     return True
-
 def delete_endtime():
     try:
-        conn = db_conn()
-        cursor = conn.cursor()
-        query = f"""UPDATE use_selenium SET last_time = '' WHERE process = 'search_rank'
+        con = db_con()
+        cur = con.cursor()
+        query = f"""UPDATE endtime SET endtime = '' WHERE title = 'search_rank'
                     """
-        cursor.execute(query)
-        conn.commit()
-        cursor.close()
-        conn.close()
+        cur.execute(query)
+        con.commit()
+        cur.close()
+        con.close()
         return True
     except:
         return True
@@ -189,55 +256,57 @@ def my_opt_list():
 
 def rankings():
     try:
+        # 기존 DB
         coupang_url =f'https://www.coupang.com' 
         result = []
         # 내 상품의 optcode list
         
         
         my_opt = my_opt_list()
-        input_log('p-1')
+        input_ranking_log('p-1')
         keywords = keyword_to_rank()
-        input_log('p-2')
+        input_ranking_log('p-2')
 
         if len(keywords) > 0:
             # 시간계산
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
-            input_log('p-4')
-            insert_endtime(op_time)
-            input_log('p-5')
+            input_ranking_log('p-4')
+            try: insert_endtime(op_time)
+            except:pass
+            input_ranking_log('p-5')
             with SB(headless2=True, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
-                input_log('s-1')
+                input_ranking_log('s-1')
                 self.open('http://google.com')
-                input_log('s-2')
+                input_ranking_log('s-2')
                 success_cnt = 0
                 for keyword in keywords:
-                    input_log(f'k-1 ({keyword})')
+                    input_ranking_log(f'k-1 ({keyword})')
                     optcode_list = []
                     rankings = []
                     rank = 0
                     page = 1
                     url = f"https://www.coupang.com/np/search?rocketAll=false&searchId=e6a8eb393372964&q={keyword}&brand=&offerCondition=&filter=&availableDeliveryFilter=&filterType=&isPriceRange=false&priceRange=&minPrice=&maxPrice=&page={page}&trcid=&traid=&filterSetByUser=true&channel=user&backgroundColor=&component=&rating=0&sorter=scoreDesc&listSize=72"
                     self.open(url)
-                    input_log(f'k-2 ({keyword})')
+                    input_ranking_log(f'k-2 ({keyword})')
                     if self.is_text_visible("ERR_HTTP2_PROTOCOL_ERROR"):
-                        input_log('ERR_HTTP2_PROTOCOL_ERROR')
+                        input_ranking_log('ERR_HTTP2_PROTOCOL_ERROR')
                         show_custom_notification_(data_1 = 'ERR_HTTP2_PROTOCOL_ERROR', data_2=  '관리자에게 문의해주세요.')
                         os._exit()
                         return False
                     
                     if self.is_text_visible("Access_Denied"):
-                        input_log('Access_Denied')
+                        input_ranking_log('Access_Denied')
                         show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
                         os._exit()
                         return False
                     try:last_page = int(self.get_text("//a[contains(@class, 'btn-last')]", timeout=4))
                     except:last_page = len(self.find_elements("//span[@class='btn-page']/a"))
-                    input_log(f'k-3 ({keyword})')
+                    input_ranking_log(f'k-3 ({keyword})')
                     while True:
 
                         if self.is_text_visible("Access Denied"):
-                            input_log('Access_Denied')
+                            input_ranking_log('Access_Denied')
                             show_custom_notification_(data_1 = '쿠팡사이트가 검색을 차단했습니다.', data_2=  '30분 이후 다시 시도해주세요.')
                             os._exit()
                             return False
@@ -245,11 +314,11 @@ def rankings():
                         scroll = random.randint(10, 1000) * 10
                         self.execute_script(f"window.scrollTo(0, {scroll})")
                         time.sleep(random.randint(1000, 3000) / 1000)
-                        input_log(f'w-1 ({keyword})')
+                        input_ranking_log(f'w-1 ({keyword})')
                         soup = BeautifulSoup(self.get_page_source(), "html.parser")
-                        input_log(f'w-2 ({keyword})')
+                        input_ranking_log(f'w-2 ({keyword})')
                         items = soup.select(" li.search-product:not(.sdw-aging-carousel-item):not(.ad-badge-text):not(.search-product__ad-badge) ")
-                        input_log(f'w-3 ({len(items)})')
+                        input_ranking_log(f'w-3 ({len(items)})')
                         disp_cnt = 0
                         for index, item in enumerate(items, start=1): #저장한 items들을 순차적으로 검색함.  
                             disp_cnt += 1
@@ -354,9 +423,10 @@ def rankings():
 
                     
             if success_cnt > 0:
+                delete_endtime()
                 show_custom_notification_(data_1 = f"{success_cnt} 개의 검색어 랭킹 수집 완료", data_2 = "마진가이드에서 확인하세요.")
         # till 타임 지우기
-        delete_endtime()
+
         return True  
     except:
         delete_endtime()
@@ -365,5 +435,6 @@ def rankings():
 
 
 if __name__ == "__main__":
-        rankings()
+    iniitial()
+    rankings()
     
