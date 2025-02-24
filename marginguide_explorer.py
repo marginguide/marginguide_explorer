@@ -18,14 +18,14 @@ def db_con():
     try:
         con = sqlite3.connect(sel_path)
     except:
-        con = sqlite3.connect('data/seldb.db')
+        con = sqlite3.connect("C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db")
     return con
 
 def db_conn():
     try:
         conn = sqlite3.connect(db_path)
     except:
-        conn = sqlite3.connect('data/db.db')
+        conn = sqlite3.connect("C:\\Program Files (x86)\\Margin Guide\\data\\db.db")
     return conn
 def iniitial():
     con = db_con()
