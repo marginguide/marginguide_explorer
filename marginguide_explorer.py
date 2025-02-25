@@ -246,14 +246,18 @@ def delete_endtime():
         return True
 
 def my_opt_list():
-    conn = db_conn()
-    cursor = conn.cursor()
-    query = "SELECT optcode, prdcode FROM optlist"
-    df = pd.read_sql_query(query, conn) 
-    my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
-    cursor.close()
-    conn.close()
-    return my_opt
+    try:
+        conn = db_conn()
+        cursor = conn.cursor()
+        query = "SELECT optcode, prdcode FROM optlist"
+        df = pd.read_sql_query(query, conn) 
+        my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
+        cursor.close()
+        conn.close()
+        return my_opt
+    except:
+        try:conn.close()
+        except:pass
 
 def rankings():
     try:
@@ -430,8 +434,13 @@ def rankings():
 
         return True  
     except:
+        try:con.close()
+        except:pass
         delete_endtime()
         show_custom_notification_(data_1 = f"키워드 랭킹검색이 중단되었습니다.", data_2 = "다시 시도해 주세요.")
+        try:con.close()
+        except:pass
+        
         return False
 
 
