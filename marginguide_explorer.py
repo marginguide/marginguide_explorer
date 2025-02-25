@@ -10,7 +10,7 @@ import pandas as pd
 now = datetime.today()
 str_today = str(datetime.strftime(now, "%Y-%m-%d"))
 basedir = os.path.abspath(os.path.dirname(__file__))  # 현재 스크립트 파일의 디렉토리
-parentdir = os.path.dirname(basedir)  # 상위 디렉토리
+parentdir = os.path.abspath("..")
 db_path = os.path.join(parentdir, "data", "db.db") 
 sel_path = os.path.join(basedir, "data", "seldb.db")
 
