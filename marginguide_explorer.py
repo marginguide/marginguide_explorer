@@ -24,9 +24,10 @@ def db_con():
 
 def db_conn():
     try:
-        conn = sqlite3.connect(db_path)
-    except:
+        # conn = sqlite3.connect(db_path)
         conn = sqlite3.connect("C:\\Program Files (x86)\\Margin Guide\\data\\db.db")
+    except:
+        conn = False
     return conn
 def iniitial():
     con = db_con()
@@ -252,6 +253,7 @@ def my_opt_list():
         query = "SELECT optcode, prdcode FROM optlist"
         df = pd.read_sql_query(query, conn) 
         my_opt = df.set_index(str("optcode"))[str("prdcode")].to_dict()
+        print(my_opt)
         cursor.close()
         conn.close()
         return my_opt
@@ -268,7 +270,9 @@ def rankings():
         
         
         my_opt = my_opt_list()
-        input_ranking_log('p-1')
+        if my_opt == False:
+            input_ranking_log('내 상품 옵션 가져오기 오류')
+            return False
         keywords = keyword_to_rank()
         input_ranking_log('p-2')
 
