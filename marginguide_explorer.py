@@ -1,4 +1,4 @@
-# pyinstaller -w -F --uac-admin --add-data "static;static" --icon=.\static\icon.ico --noconfirm marginguide_explorer.py
+# pyinstaller -w --onedir  --uac-admin --add-data "static;static" --icon=.\static\icon.ico --noconfirm marginguide_explorer.py
 from seleniumbase import SB
 import time, os, random,sqlite3,winsound, sys
 from datetime import datetime, timedelta
@@ -6,19 +6,20 @@ from bs4 import BeautifulSoup
 import tkinter as tk
 from threading import Timer
 import pandas as pd
+ 
 now = datetime.today()
 str_today = str(datetime.strftime(now, "%Y-%m-%d"))
-basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.dirname(__file__))  # 현재 스크립트 파일의 디렉토리
+parentdir = os.path.dirname(basedir)  # 상위 디렉토리
+db_path = os.path.join(parentdir, "data", "db.db") 
 sel_path = os.path.join(basedir, "data", "seldb.db")
-db_path = os.path.join(basedir, "data", "db.db")
-# db_path = "C:\\Program Files (x86)\\Margin Guide\\data\\db.db"
-# sel_path = "C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db"
+
 
 def db_con():
     try:
         con = sqlite3.connect(sel_path)
     except:
-        con = sqlite3.connect("C:\\Program Files (x86)\\Margin Guide\\data\\seldb.db")
+        con = sqlite3.connect("C:\\Program Files (x86)\\Margin Guide\\marginguide_explorer\\data\\seldb.db")
     return con
 
 def db_conn():
