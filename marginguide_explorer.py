@@ -279,12 +279,14 @@ def rankings():
         if len(keywords) > 0:
             # 시간계산
             op_time = now + timedelta(seconds=230 * len(keywords))
+            op_time = op_time + timedelta(seconds=30)
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
+            time.sleep(30)
             input_ranking_log('p-4')
             try: insert_endtime(op_time)
             except:pass
             input_ranking_log('p-5')
-            with SB(headless2=True, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
+            with SB(headless2=False, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
                 input_ranking_log('s-1')
                 self.open('http://google.com')
                 input_ranking_log('s-2')
@@ -323,11 +325,11 @@ def rankings():
                         scroll = random.randint(10, 1000) * 10
                         self.execute_script(f"window.scrollTo(0, {scroll})")
                         time.sleep(random.randint(1000, 3000) / 1000)
-                        input_ranking_log(f'w-1 ({keyword})')
+                        input_ranking_log(f'{keyword} - page : {page} - before soup')
                         soup = BeautifulSoup(self.get_page_source(), "html.parser")
-                        input_ranking_log(f'w-2 ({keyword})')
+                        input_ranking_log(f'{keyword} - page : {page} - after soup')
                         items = soup.select(" li.search-product:not(.sdw-aging-carousel-item):not(.ad-badge-text):not(.search-product__ad-badge) ")
-                        input_ranking_log(f'w-3 ({len(items)})')
+                        input_ranking_log(f'{keyword} - page : {page} - get items')
                         disp_cnt = 0
                         for index, item in enumerate(items, start=1): #저장한 items들을 순차적으로 검색함.  
                             disp_cnt += 1
