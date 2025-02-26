@@ -281,12 +281,13 @@ def rankings():
             op_time = now + timedelta(seconds=230 * len(keywords))
             op_time = op_time + timedelta(seconds=30)
             op_time = datetime.strftime(op_time, "%Y-%m-%d %H:%M:%S")
-            time.sleep(30)
+            
             input_ranking_log('p-4')
             try: insert_endtime(op_time)
             except:pass
+            time.sleep(30)
             input_ranking_log('p-5')
-            with SB(headless2=False, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
+            with SB(headless2=True, uc=True, log_cdp=True, block_images=True, incognito=False) as self:
                 input_ranking_log('s-1')
                 self.open('http://google.com')
                 input_ranking_log('s-2')
